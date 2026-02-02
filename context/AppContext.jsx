@@ -26,7 +26,19 @@ export const AppContextProvider = (props) => {
     const [cartItems, setCartItems] = useState({});
 
     const fetchProductData = async () => {
-        setProducts(productsDummyData)
+        try {
+
+            const { data } = await axios.get('/api/product/list');
+
+            if (data.success) {
+                setProducts(data.products);
+            } else {
+                toast.error(data.message);
+            }
+
+        } catch (error) {
+            toast.error(error.message);
+        }
     }
 
     const fetchUserData = async () => {
@@ -43,9 +55,6 @@ export const AppContextProvider = (props) => {
                 }
             });
 
-            console.log(data);
-            
-
             if (data.success) {
                 setUserData(data.user);
                 setCartItems(data.user.cartItems);
@@ -53,7 +62,7 @@ export const AppContextProvider = (props) => {
                 toast.error(data.message);
             }
 
-            setUserData(userDummyData)
+            setUserData(data.user)
         } catch (error) {
             toast.error(error.message);
         }
@@ -61,26 +70,64 @@ export const AppContextProvider = (props) => {
 
     const addToCart = async (itemId) => {
 
-        let cartData = structuredClone(cartItems);
-        if (cartData[itemId]) {
-            cartData[itemId] += 1;
-        }
-        else {
-            cartData[itemId] = 1;
-        }
-        setCartItems(cartData);
+        let cartData = structuredClone(cartItems || {});
 
+        if (cartData) {
+            if (cartData[itemId]) {
+                cartData[itemId] += 1;
+            }
+            else {
+                cartData[itemId] = 1;
+            }
+            setCartItems(cartData);
+        }
+
+        if (user) {
+            try {
+
+                const token = await getToken();
+
+                await axios.post('/api/cart/update', { cartData }, {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+                toast.success('Item added to cart');
+            } catch (error) {
+                toast.error(error.message);
+            }
+        }
     }
 
     const updateCartQuantity = async (itemId, quantity) => {
 
         let cartData = structuredClone(cartItems);
-        if (quantity === 0) {
-            delete cartData[itemId];
-        } else {
-            cartData[itemId] = quantity;
+
+        if (cartData[itemId] != 1) {
+            if (cartData[itemId]) {
+                cartData[itemId] -= 1;
+            }
+            else {
+                cartData[itemId] = 1;
+            }
+            setCartItems(cartData);
+        } 
+
+        if (user) {
+            try {
+
+                const token = await getToken();
+
+                await axios.post('/api/cart/update', { cartData }, {
+                    headers: {
+                        Authorization: `Bearer ${token}`
+                    }
+                });
+               
+            } catch (error) {
+                toast.error(error.message);
+            }
         }
-        setCartItems(cartData)
 
     }
 
